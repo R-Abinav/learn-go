@@ -50,5 +50,5 @@ func main(){
 
 	var catStr2 = strBuilder.String()
 	fmt.Println(catStr2)
-	
+
 }
