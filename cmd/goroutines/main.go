@@ -201,6 +201,61 @@ The result from db: [id1 id2 id4 id3]    <- Missing Data
 //NOTE -> IT is VERY VERY IMP, on where you place your locks and unlocks
 
 //One drawback of this sort of mutex, is that it completely locks out the other go routines to accessing the result slice.
+//You might want it, but sometimes you might not
+
+// import (
+// 	"fmt"
+// 	"time"
+// 	"sync"
+// )
+
+// var m = sync.Mutex{}
+// var wg = sync.WaitGroup{}
+// var dbData []string = []string{"id1", "id2", "id3", "id4", "id5"}
+// var results []string = []string{}
+
+// func main(){
+// 	t0 := time.Now()
+// 	for i := 0; i<len(dbData); i++{
+// 		wg.Add(1)
+// 		go dbCall(i)
+// 	}
+// 	wg.Wait()
+
+// 	fmt.Printf("\nTotal execution time: %v", time.Since(t0))
+// 	fmt.Printf("\nThe result from db: %v", results)
+// }
+
+// func dbCall(i int){
+// 	//Simulate db call delay
+// 	var delay float32 = 2000
+// 	time.Sleep(time.Duration(delay) * time.Millisecond)
+
+// 	fmt.Println("The result from the database is: ", dbData[i])
+// 	m.Lock()
+// 	results = append(results, dbData[i])
+// 	m.Unlock()
+
+// 	wg.Done()
+// }
+
+// --- OUTPUT OF THE ABOVE ---
+/* 
+The result from the database is:  id4
+The result from the database is:  id5
+The result from the database is:  id3
+The result from the database is:  id1
+The result from the database is:  id2
+
+Total execution time: 2.001743791s
+The result from db: [id4 id5 id3 id1 id2]
+*/
+
+
+// --- CODE SNIPPET 6 ---
+//Read Write Mutex -> When the go routines reaches the m.Lock(), it checks if a FULL LOCK is present or not. If a full lock is present, the go routine cannot read the data while the other go routine is potentially writing the data
+//If no FULL lock exists, the go routine will aquire a Read Lock, then proceed with the rest of the code
+//This pattern lets multiple go routines to read from our slice in the same time, only blocking when writes may be happening
 
 import (
 	"fmt"
@@ -208,7 +263,7 @@ import (
 	"sync"
 )
 
-var m = sync.Mutex{}
+var m = sync.RWMutex{} //You get functions like -> RLock, RUnlock (Read Lock and Unlock)
 var wg = sync.WaitGroup{}
 var dbData []string = []string{"id1", "id2", "id3", "id4", "id5"}
 var results []string = []string{}
@@ -230,22 +285,31 @@ func dbCall(i int){
 	var delay float32 = 2000
 	time.Sleep(time.Duration(delay) * time.Millisecond)
 
-	fmt.Println("The result from the database is: ", dbData[i])
-	m.Lock()
-	results = append(results, dbData[i])
-	m.Unlock()
+	save(dbData[i])
+	log()
 
 	wg.Done()
 }
 
+func save(result string){
+	m.Lock()
+	results = append(results, result)
+	m.Unlock()
+}
+
+func log(){
+	m.RLock()
+	fmt.Printf("\nThe current results are: %v", results)
+	m.RUnlock()
+}
+
 // --- OUTPUT OF THE ABOVE ---
 /* 
-The result from the database is:  id4
-The result from the database is:  id5
-The result from the database is:  id3
-The result from the database is:  id1
-The result from the database is:  id2
-
-Total execution time: 2.001743791s
-The result from db: [id4 id5 id3 id1 id2]
+The current results are: [id1]
+The current results are: [id1 id4]
+The current results are: [id1 id4 id5]
+The current results are: [id1 id4 id5 id2]
+The current results are: [id1 id4 id5 id2 id3]
+Total execution time: 2.002031083s
+The result from db: [id1 id4 id5 id2 id3]
 */
