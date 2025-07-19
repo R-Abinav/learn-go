@@ -14,17 +14,44 @@ to the channel's internal state is safe.
 
 // --- CODE SNIPPET 1 ---
 //defer keyword -> The defer keyword in Go schedules a function call to be executed when the surrounding function returns, regardless of how it returns (normal return, panic, etc.).
+//The code snippet here -> Unbuffered channel 
+// Unbuffered Channel -> 1. Cannot store any values, 2. Send operations block until another goroutine receives, and vice versa, 3. Synchronous Comms -> sender and receiver must be ready at the same time
+
+// import (
+// 	"fmt"
+// )
+
+// func main(){
+// 	var c = make(chan int)
+// 	go process(c)
+// 	for i := range c{
+// 		fmt.Println(i)
+// 	}
+// }
+
+// func process(c chan int){
+// 	defer close(c)
+// 	for i:=0; i<5; i++{
+// 		c <- i
+// 	}
+// }
+
+// --- CODE SNIPPET 2 ---
+//Buffer channels -> 1.Can hold multiple values up to its capacity, 2.Sends only block when buffer is full, 3.Sender can send without immediate receiver (up to buffer limit)
+//The previous program, keeps the process function running till main does its job, here process function does its job and exits!!
 
 
 import (
 	"fmt"
+	"time"
 )
 
 func main(){
-	var c = make(chan int)
+	var c = make(chan int, 5)
 	go process(c)
 	for i := range c{
 		fmt.Println(i)
+		time.Sleep(time.Second * 1)
 	}
 }
 
@@ -33,4 +60,5 @@ func process(c chan int){
 	for i:=0; i<5; i++{
 		c <- i
 	}
+	fmt.Println("Exiting function process")
 }
