@@ -41,24 +41,79 @@ to the channel's internal state is safe.
 //The previous program, keeps the process function running till main does its job, here process function does its job and exits!!
 
 
+// import (
+// 	"fmt"
+// 	"time"
+// )
+
+// func main(){
+// 	var c = make(chan int, 5)
+// 	go process(c)
+// 	for i := range c{
+// 		fmt.Println(i)
+// 		time.Sleep(time.Second * 1)
+// 	}
+// }
+
+// func process(c chan int){
+// 	defer close(c)
+// 	for i:=0; i<5; i++{
+// 		c <- i
+// 	}
+// 	fmt.Println("Exiting function process")
+// }
+
+
+// --- CODE SNIPPET 3 ---
+// A Better example
+// A program that mocks checking for sales of chicken fingers at walmart, costco and wholefoods. If it finds a sale, it will send me a message.
+// Select statement -> "IF" statements but for channels
+
 import (
 	"fmt"
 	"time"
+	"math/rand"
 )
 
-func main(){
-	var c = make(chan int, 5)
-	go process(c)
-	for i := range c{
-		fmt.Println(i)
-		time.Sleep(time.Second * 1)
+var MAX_CHICKEN_PRICE_THRESH int = 5
+var MAX_TOFU_PRICE_THRESH int = 3
+
+func main() {
+	var chickenChannel = make(chan string)
+	var tofuChannel = make(chan string)
+
+	var websites []string = []string{"walmart.com", "wholefoods.com", "costco.com"}
+
+	for i:= range websites {
+		go checkChickenPrices(websites[i], chickenChannel)
+		go checkTofuPrices(websites[i], tofuChannel)
+	}
+
+	sendMessage(chickenChannel, tofuChannel)
+}
+
+func checkChickenPrices(website string, c chan string){
+	time.Sleep(time.Second * 1)
+	var chickenPrice float32 = rand.Float32() * 20
+	if chickenPrice <= float32(MAX_CHICKEN_PRICE_THRESH){
+		c <- website
 	}
 }
 
-func process(c chan int){
-	defer close(c)
-	for i:=0; i<5; i++{
-		c <- i
+func checkTofuPrices(website string, c chan string){
+	time.Sleep(time.Second * 1)
+	var tofuPrice float32 = rand.Float32() * 20
+	if tofuPrice <= float32(MAX_TOFU_PRICE_THRESH){
+		c <- website
 	}
-	fmt.Println("Exiting function process")
+}
+
+func sendMessage(chickenChannel chan string, tofuChannel chan string){
+	select{
+		case website := <- chickenChannel:
+			fmt.Printf("\n Text Sent: Found chicken deal on: %v", website)
+		
+		case website := <- tofuChannel:
+			fmt.Printf("\n Email Sent: Found tofu deal on: %v", website)
+	}
 }
